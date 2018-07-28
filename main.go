@@ -5,26 +5,55 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 )
 
 const (
 	Dictionary = "words.txt"
 )
 
+// AltDNS holds words, etc
 type AltDNS struct {
+	PermutationWords []string
+	OutputChan       chan<- string
 }
 
-func (a *AltDNS) Permute(domain string) {
-
-	// Read all permutations words
-	var permutationWords []string
-	f, _ := os.Open(Dictionary)
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		permutationWords = append(permutationWords, scanner.Text())
+func (a *AltDNS) insertDashes(domain string, preSub string, postSub string, results chan string) {
+	for _, w := range a.PermutationWords {
+		results <- fmt.Sprintf(w + "-" + domain)
+		results <- fmt.Sprintf(preSub + "-" + w + "." + postSub)
 	}
+}
 
-	// Grabs placeholders
+func (a *AltDNS) insertIndexes(domain string, results chan string) {
+	for i, rune := range domain {
+		if rune == '.' {
+			for _, w := range a.PermutationWords {
+				results <- fmt.Sprintf(domain[:i] + "." + w + domain[i:])
+			}
+		}
+	}
+}
+
+func (a *AltDNS) insertNumberSuffixes(domain string, preSub string, postSub string, results chan string) {
+	for i := 0; i < 10; i++ {
+		results <- fmt.Sprintf("%s-%d.%s", preSub, i, postSub)
+		results <- fmt.Sprintf("%s%d.%s", preSub, i, postSub)
+	}
+}
+
+func (a *AltDNS) insertWordsSubdomains(domain string, preSub string, postSub string, results chan string) {
+	for _, w := range a.PermutationWords {
+		results <- fmt.Sprintf(w + preSub + "." + postSub)
+		results <- fmt.Sprintf(preSub + w + "." + postSub)
+	}
+}
+
+// Permute permutes a given domain and sends output on a channel
+func (a *AltDNS) Permute(domain string) chan string {
+	wg := sync.WaitGroup{}
+	results := make(chan string)
+
 	var preSub, postSub string
 	subParts := strings.SplitN(domain, ".", 2)
 	preSub = subParts[0]
@@ -32,42 +61,66 @@ func (a *AltDNS) Permute(domain string) {
 		postSub = subParts[1]
 	}
 
-	// Insert all indexes
-	for i, rune := range domain {
-		if rune == '.' {
-			for _, w := range permutationWords {
-				fmt.Println(domain[:i] + "." + w + domain[i:])
-			}
-		}
-	}
+	go func(domain string) {
+		defer close(results)
 
-	// Insert all dash
-	for _, w := range permutationWords {
-		fmt.Println(w + "-" + domain)
-		fmt.Println(domain + "-" + w)
-		fmt.Println(preSub + "-" + w + "." + postSub)
-	}
+		// Insert all indexes
+		wg.Add(1)
+		go func(domain string, results chan string) {
+			defer wg.Done()
+			a.insertIndexes(domain, results)
+		}(domain, results)
 
-	// Insert Number Suffix Subdomains
-	for i := 0; i < 10; i++ {
-		fmt.Println(preSub + "-" + string(i) + "." + postSub)
-		fmt.Println(preSub + string(i) + "." + postSub)
-	}
+		// Insert all dash
+		wg.Add(1)
+		go func(domain string, preSub string, postSub string, results chan string) {
+			defer wg.Done()
+			a.insertDashes(domain, preSub, postSub, results)
+		}(domain, preSub, postSub, results)
 
-	// Join Words Subdomains
-	for _, w := range permutationWords {
-		fmt.Println(w + preSub + "." + postSub)
-		fmt.Println(preSub + w + "." + postSub)
-	}
+		// // // Insert Number Suffix Subdomains
+		wg.Add(1)
+		go func(domain string, preSub string, postSub string, results chan string) {
+			defer wg.Done()
+			a.insertNumberSuffixes(domain, preSub, postSub, results)
+		}(domain, preSub, postSub, results)
 
+		// // // Join Words Subdomains
+		wg.Add(1)
+		go func(domain string, preSub string, postSub string, results chan string) {
+			defer wg.Done()
+			a.insertWordsSubdomains(domain, preSub, postSub, results)
+		}(domain, preSub, postSub, results)
+
+		wg.Wait()
+	}(domain)
+
+	return results
 }
 
 func main() {
-	urls := []string{"aa.bb.cc.dd", "www.kk.cc.dd.oo.pp", "g.a.b.c.d.e"}
+	urls := []string{"aa.bb.cc"}
 
 	altnds := &AltDNS{}
 
-	for _, u := range urls {
-		altnds.Permute(u)
+	f, _ := os.Open(Dictionary)
+	scanner := bufio.NewScanner(f)
+
+	for scanner.Scan() {
+		altnds.PermutationWords = append(altnds.PermutationWords, scanner.Text())
 	}
+
+	jobs := sync.WaitGroup{}
+
+	for _, u := range urls {
+		jobs.Add(1)
+		go func(domain string) {
+			defer jobs.Done()
+			for result := range altnds.Permute(domain) {
+				fmt.Printf("%s\n", result)
+			}
+		}(u)
+	}
+
+	jobs.Wait()
 }
