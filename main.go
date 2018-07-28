@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
+
+	"github.com/bobesa/go-domain-util/domainutil"
 )
 
 const (
@@ -18,34 +19,72 @@ type AltDNS struct {
 	OutputChan       chan<- string
 }
 
-func (a *AltDNS) insertDashes(domain string, preSub string, postSub string, results chan string) {
+func (a *AltDNS) insertDashes(domain string, results chan string) {
 	for _, w := range a.PermutationWords {
-		results <- fmt.Sprintf(w + "-" + domain)
-		results <- fmt.Sprintf(preSub + "-" + w + "." + postSub)
+		// prefixes
+		results <- fmt.Sprint(w + "-" + domain)
+		// suffixes
+		results <- fmt.Sprint(domain + "-" + w)
 	}
-}
 
-func (a *AltDNS) insertIndexes(domain string, results chan string) {
 	for i, rune := range domain {
 		if rune == '.' {
 			for _, w := range a.PermutationWords {
-				results <- fmt.Sprintf(domain[:i] + "." + w + domain[i:])
+				results <- fmt.Sprint(domain[:i] + "." + w + "-" + domain[i+1:])
+				results <- fmt.Sprintf(domain[:i] + "-" + w + domain[i:])
 			}
 		}
 	}
 }
 
-func (a *AltDNS) insertNumberSuffixes(domain string, preSub string, postSub string, results chan string) {
-	for i := 0; i < 10; i++ {
-		results <- fmt.Sprintf("%s-%d.%s", preSub, i, postSub)
-		results <- fmt.Sprintf("%s%d.%s", preSub, i, postSub)
+func (a *AltDNS) insertIndexes(domain string, results chan string) {
+	for _, w := range a.PermutationWords {
+		// prefixes
+		results <- fmt.Sprint(w + "." + domain)
+		// suffixes
+		results <- fmt.Sprint(domain + "." + w)
+	}
+
+	for i, rune := range domain {
+		if rune == '.' {
+			for _, w := range a.PermutationWords {
+				results <- fmt.Sprint(domain[:i] + "." + w + domain[i:])
+			}
+		}
 	}
 }
 
-func (a *AltDNS) insertWordsSubdomains(domain string, preSub string, postSub string, results chan string) {
+func (a *AltDNS) insertNumberSuffixes(domain string, results chan string) {
+	for j := 0; j < 10; j++ {
+		// suffixes
+		results <- fmt.Sprintf("%s-%d", domain, j)
+	}
+
+	for i, rune := range domain {
+		if rune == '.' {
+			for j := 0; j < 10; j++ {
+				results <- fmt.Sprintf("%s-%d%s", domain[:i], j, domain[i:])
+				results <- fmt.Sprintf("%s%d%s", domain[:i], j, domain[i:])
+			}
+		}
+	}
+}
+
+func (a *AltDNS) insertWordsSubdomains(domain string, results chan string) {
 	for _, w := range a.PermutationWords {
-		results <- fmt.Sprintf(w + preSub + "." + postSub)
-		results <- fmt.Sprintf(preSub + w + "." + postSub)
+		// prefixes
+		results <- fmt.Sprint(w + domain)
+		// suffixes
+		results <- fmt.Sprint(domain + w)
+	}
+
+	for i, rune := range domain {
+		if rune == '.' {
+			for _, w := range a.PermutationWords {
+				results <- fmt.Sprint(domain[:i] + w + domain[i:])
+				results <- fmt.Sprint(domain[:i] + "." + w + domain[i+1:])
+			}
+		}
 	}
 }
 
@@ -53,13 +92,6 @@ func (a *AltDNS) insertWordsSubdomains(domain string, preSub string, postSub str
 func (a *AltDNS) Permute(domain string) chan string {
 	wg := sync.WaitGroup{}
 	results := make(chan string)
-
-	var preSub, postSub string
-	subParts := strings.SplitN(domain, ".", 2)
-	preSub = subParts[0]
-	if len(subParts) > 1 {
-		postSub = subParts[1]
-	}
 
 	go func(domain string) {
 		defer close(results)
@@ -73,24 +105,24 @@ func (a *AltDNS) Permute(domain string) chan string {
 
 		// Insert all dash
 		wg.Add(1)
-		go func(domain string, preSub string, postSub string, results chan string) {
+		go func(domain string, results chan string) {
 			defer wg.Done()
-			a.insertDashes(domain, preSub, postSub, results)
-		}(domain, preSub, postSub, results)
+			a.insertDashes(domain, results)
+		}(domain, results)
 
 		// Insert Number Suffix Subdomains
 		wg.Add(1)
-		go func(domain string, preSub string, postSub string, results chan string) {
+		go func(domain string, results chan string) {
 			defer wg.Done()
-			a.insertNumberSuffixes(domain, preSub, postSub, results)
-		}(domain, preSub, postSub, results)
+			a.insertNumberSuffixes(domain, results)
+		}(domain, results)
 
 		// Join Words Subdomains
 		wg.Add(1)
-		go func(domain string, preSub string, postSub string, results chan string) {
+		go func(domain string, results chan string) {
 			defer wg.Done()
-			a.insertWordsSubdomains(domain, preSub, postSub, results)
-		}(domain, preSub, postSub, results)
+			a.insertWordsSubdomains(domain, results)
+		}(domain, results)
 
 		wg.Wait()
 	}(domain)
@@ -99,7 +131,8 @@ func (a *AltDNS) Permute(domain string) chan string {
 }
 
 func main() {
-	urls := []string{"aa.bb.cc"}
+
+	urls := []string{"aa.bb.cc.dd.com", "www.ee.com"}
 
 	altnds := &AltDNS{}
 
@@ -113,11 +146,13 @@ func main() {
 	jobs := sync.WaitGroup{}
 
 	for _, u := range urls {
+		subdomain := domainutil.Subdomain(u)
+		domainSuffix := domainutil.Domain(u)
 		jobs.Add(1)
 		go func(domain string) {
 			defer jobs.Done()
-			for result := range altnds.Permute(domain) {
-				fmt.Printf("%s\n", result)
+			for r := range altnds.Permute(subdomain) {
+				fmt.Printf("%s.%s\n", r, domainSuffix)
 			}
 		}(u)
 	}
