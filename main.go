@@ -78,14 +78,14 @@ func (a *AltDNS) Permute(domain string) chan string {
 			a.insertDashes(domain, preSub, postSub, results)
 		}(domain, preSub, postSub, results)
 
-		// // // Insert Number Suffix Subdomains
+		// Insert Number Suffix Subdomains
 		wg.Add(1)
 		go func(domain string, preSub string, postSub string, results chan string) {
 			defer wg.Done()
 			a.insertNumberSuffixes(domain, preSub, postSub, results)
 		}(domain, preSub, postSub, results)
 
-		// // // Join Words Subdomains
+		// Join Words Subdomains
 		wg.Add(1)
 		go func(domain string, preSub string, postSub string, results chan string) {
 			defer wg.Done()
