@@ -15,6 +15,8 @@ The installation is easy. Just `go get` the repo.
 go get github.com/subfinder/goaltdns
 ```
 
+Note - You need to copy the words.txt file into the same directory as the tool or specify it's location via the -w flag.
+
 ## Upgrading
 If you wish to upgrade the package you can use:
 
