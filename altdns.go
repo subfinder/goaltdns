@@ -85,17 +85,21 @@ func (a *AltDNS) insertWordsSubdomains(domain string, results chan string) {
 }
 
 // New Returns a new altdns object
-func New(wordList string) *AltDNS {
+func New(wordList string) (*AltDNS, error) {
 	altdns := AltDNS{}
 
-	f, _ := os.Open(wordList)
+	f, err := os.Open(wordList)
+	if err != nil {
+		return &altdns, err
+	}
+
 	scanner := bufio.NewScanner(f)
 
 	for scanner.Scan() {
 		altdns.PermutationWords = append(altdns.PermutationWords, scanner.Text())
 	}
 
-	return &altdns
+	return &altdns, nil
 }
 
 // Permute permutes a given domain and sends output on a channel
