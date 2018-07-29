@@ -11,7 +11,7 @@ import (
 func TestPermute(t *testing.T) {
 	urls := []string{"abc.xyz.freelancer.com", "aa.bb.cc"}
 
-	altdns := New("words.txt")
+	altdns, _ := New("words.txt")
 
 	jobs := sync.WaitGroup{}
 

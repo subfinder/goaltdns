@@ -169,7 +169,11 @@ func main() {
 		}
 	}
 
-	altdns := New(wordlist)
+	altdns, err := New(wordlist)
+	if err != nil {
+		fmt.Printf("wordlist: %s\n", err)
+		os.Exit(1)
+	}
 	jobs := sync.WaitGroup{}
 
 	for _, u := range hostList {
