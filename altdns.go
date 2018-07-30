@@ -145,11 +145,12 @@ func (a *AltDNS) Permute(domain string) chan string {
 }
 
 func main() {
-	var wordlist, host, list string
+	var wordlist, host, list, output string
 	hostList := []string{}
 	flag.StringVar(&host, "host", "", "Host to generate permutations for")
 	flag.StringVar(&list, "l", "", "List of hosts to generate permutations for")
 	flag.StringVar(&wordlist, "w", "words.txt", "Wordlist to generate permutations with")
+	flag.StringVar(&output, "o", "", "File to write permutation output to (optional)")
 
 	flag.Parse()
 
@@ -169,6 +170,18 @@ func main() {
 		}
 	}
 
+	var f *os.File
+	var err error
+	if output != "" {
+		f, err = os.OpenFile(output, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			fmt.Printf("output: %s\n", err)
+			os.Exit(1)
+		}
+
+		defer f.Close()
+	}
+
 	altdns, err := New(wordlist)
 	if err != nil {
 		fmt.Printf("wordlist: %s\n", err)
@@ -183,7 +196,15 @@ func main() {
 		go func(domain string) {
 			defer jobs.Done()
 			for r := range altdns.Permute(subdomain) {
-				fmt.Printf("%s.%s\n", r, domainSuffix)
+				permutation := fmt.Sprintf("%s.%s\n", r, domainSuffix)
+				if output == "" {
+					fmt.Printf("%s\n", permutation)
+				} else {
+					if _, err = f.WriteString(permutation); err != nil {
+						fmt.Printf("write: %s", err)
+						os.Exit(1)
+					}
+				}
 			}
 		}(u)
 	}

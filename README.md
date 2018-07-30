@@ -31,7 +31,7 @@ GoAltdns can either take a single host as argument or a list of hosts. To provid
 Sample run:
 
 ```bash
-ice3man@TheDaemon:~/tmp/altdns$ ./altdns -host phabricator.freelancer.com
+ice3man@TheDaemon:~/tmp/goaltdns$ ./altdns -host phabricator.freelancer.com
 1phabricator.freelancer.com
 phabricator1.freelancer.com
 10phabricator.freelancer.com
@@ -43,6 +43,15 @@ phabricator-0.freelancer.com
 ```
 
 You can pass custom wordlists using the -w option. Currently, it uses words.txt taken from [here](https://github.com/haccer/altdns/blob/master/words.txt).
+
+By default, goaltdns writes to the standard output. If you want to save the results to a file, you can use `-o` flag with the name of then file to write to it.
+
+```bash
+ice3man@TheDaemon:~/tmp/goaltdns$ ./altdns -l ~/uberinternal -o output.txt
+```
+
+This will render a blank console but the tool will still write to the output file.
+
 # License
 
 GoAltdns is made with 🖤 by [Subfinder](https://github.com/subfinder) team.
