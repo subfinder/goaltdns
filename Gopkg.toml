@@ -1,0 +1,7 @@
+[[constraint]]
+  branch = "master"
+  name = "github.com/bobesa/go-domain-util"
+
+[prune]
+  go-tests = true
+  unused-packages = true
