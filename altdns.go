@@ -198,7 +198,7 @@ func main() {
 			for r := range altdns.Permute(subdomain) {
 				permutation := fmt.Sprintf("%s.%s\n", r, domainSuffix)
 				if output == "" {
-					fmt.Printf("%s\n", permutation)
+					fmt.Printf("%s", permutation)
 				} else {
 					if _, err = f.WriteString(permutation); err != nil {
 						fmt.Printf("write: %s", err)
