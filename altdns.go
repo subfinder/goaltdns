@@ -195,15 +195,17 @@ func main() {
 		jobs.Add(1)
 		go func(domain string) {
 			defer jobs.Done()
+
+			w := bufio.NewWriter(f)
+
+			defer w.Flush()
+
 			for r := range altdns.Permute(subdomain) {
 				permutation := fmt.Sprintf("%s.%s\n", r, domainSuffix)
 				if output == "" {
 					fmt.Printf("%s", permutation)
 				} else {
-					if _, err = f.WriteString(permutation); err != nil {
-						fmt.Printf("write: %s", err)
-						os.Exit(1)
-					}
+					w.WriteString(permutation)
 				}
 			}
 		}(u)
