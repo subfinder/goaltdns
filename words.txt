@@ -223,3 +223,4 @@ web1
 webapp
 westeurope
 z
+us-west-1
