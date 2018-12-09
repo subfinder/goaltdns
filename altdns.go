@@ -187,6 +187,23 @@ func main() {
 		fmt.Printf("wordlist: %s\n", err)
 		os.Exit(1)
 	}
+
+	writerJob := sync.WaitGroup{}
+
+	writequeue := make(chan string)
+
+	writerJob.Add(1)
+	go func() {
+		defer writerJob.Done()
+
+		w := bufio.NewWriter(f)
+		defer w.Flush()
+
+		for permutation := range writequeue {
+			w.WriteString(permutation)
+		}
+	}()
+
 	jobs := sync.WaitGroup{}
 
 	for _, u := range hostList {
@@ -205,11 +222,15 @@ func main() {
 				if output == "" {
 					fmt.Printf("%s", permutation)
 				} else {
-					w.WriteString(permutation)
+					writequeue <- permutation
 				}
 			}
 		}(u)
 	}
 
 	jobs.Wait()
+
+	close(writequeue)
+
+	writerJob.Wait()
 }
