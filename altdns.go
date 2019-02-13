@@ -17,6 +17,9 @@ type AltDNS struct {
 
 func (a *AltDNS) insertDashes(domain string, results chan string) {
 	for _, w := range a.PermutationWords {
+		if w == "" || domain == "" {
+			continue
+		}
 		// prefixes
 		results <- fmt.Sprint(w + "-" + domain)
 		// suffixes
@@ -35,6 +38,9 @@ func (a *AltDNS) insertDashes(domain string, results chan string) {
 
 func (a *AltDNS) insertIndexes(domain string, results chan string) {
 	for _, w := range a.PermutationWords {
+		if w == "" || domain == "" {
+			continue
+		}
 		// prefixes
 		results <- fmt.Sprint(w + "." + domain)
 		// suffixes
@@ -51,9 +57,11 @@ func (a *AltDNS) insertIndexes(domain string, results chan string) {
 }
 
 func (a *AltDNS) insertNumberSuffixes(domain string, results chan string) {
-	for j := 0; j < 10; j++ {
-		// suffixes
-		results <- fmt.Sprintf("%s-%d", domain, j)
+	if domain != "" {
+		for j := 0; j < 10; j++ {
+			// suffixes
+			results <- fmt.Sprintf("%s-%d", domain, j)
+		}
 	}
 
 	for i, rune := range domain {
