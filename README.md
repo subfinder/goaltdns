@@ -26,12 +26,26 @@ go get -u github.com/subfinder/goaltdns
 
 # Usage
 
-GoAltdns can either take a single host as argument or a list of hosts. To provide a single host, you can use the `-host` option. In order to provide a list of hosts, you can use the `-l` option.
+GoAltdns can read hosts directly from standard input, or either take a single host as argument, or a list of hosts. To provide a single host, you can use the `-h` option. In order to provide a list of hosts, you can use the `-l` option.
 
 Sample run:
 
 ```bash
 ice3man@TheDaemon:~/tmp/goaltdns$ ./altdns -host phabricator.freelancer.com
+1phabricator.freelancer.com
+phabricator1.freelancer.com
+10phabricator.freelancer.com
+1-phabricator.freelancer.com
+phabricator10.freelancer.com
+phabricator-0.freelancer.com
+1.phabricator.freelancer.com
+...
+```
+
+Sample run reading from stdin:
+
+```bash
+ice3man@TheDaemon:~/tmp/goaltdns$ echo phabricator.freelancer.com | ./altdns 
 1phabricator.freelancer.com
 phabricator1.freelancer.com
 10phabricator.freelancer.com
