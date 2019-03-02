@@ -5,10 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"sync"
 
 	"github.com/bobesa/go-domain-util/domainutil"
 	"github.com/subfinder/goaltdns/util"
+)
+
+var (
+	nbrRe = regexp.MustCompile("[0-9]+")
 )
 
 // AltDNS holds words, etc
@@ -93,6 +99,15 @@ func (a *AltDNS) insertWordsSubdomains(domain string, results chan string) {
 	}
 }
 
+func (a *AltDNS) expandNumbers(domain string, results chan string) {
+	for _, ind := range nbrRe.FindAllStringIndex(domain, -1) {
+		padSize := strconv.Itoa(ind[1] - ind[0])
+		for i := 1; i <= 10; i++ {
+			results <- fmt.Sprintf("%s%0"+padSize+"d%s", domain[:ind[0]], i, domain[ind[1]:])
+		}
+	}
+}
+
 // New Returns a new altdns object
 func New(wordList string) (*AltDNS, error) {
 	altdns := AltDNS{}
@@ -145,6 +160,13 @@ func (a *AltDNS) Permute(domain string) chan string {
 		go func(domain string, results chan string) {
 			defer wg.Done()
 			a.insertWordsSubdomains(domain, results)
+		}(domain, results)
+
+		// Permute numbers 0x -> 01, 02, 03, ...
+		wg.Add(1)
+		go func(domain string, results chan string) {
+			defer wg.Done()
+			a.expandNumbers(domain, results)
 		}(domain, results)
 
 		wg.Wait()
