@@ -173,7 +173,14 @@ func (a *AltDNS) Permute(domain string) chan string {
 
 // Permutations permutes a given domain and return a list of permutations
 func (a *AltDNS) Permutations(domain string) (permutations []string) {
+	uniq := make(map[string]bool)
 	for r := range a.Permute(domain) {
+		// avoid duplicates
+		if _, ok := uniq[r]; ok {
+			continue
+		}
+
+		uniq[r] = true
 		permutations = append(permutations, r)
 	}
 	return permutations
